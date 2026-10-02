@@ -12,10 +12,22 @@ A Trackman compatible CLI & MCP client.
 ## Install
 
 ```sh
-cargo install apiman          # installs the `trackman` command into ~/.cargo/bin
+cargo install apiman
 ```
 
-This requires Rust 1.88 or newer.
+This installs the `trackman` command into `~/.cargo/bin`. Check it with `trackman --version`.
+
+- **No Rust yet?** Install it from [rustup.rs](https://rustup.rs) (`curl https://sh.rustup.rs -sSf | sh`). Rust 1.88 or newer is required; run `rustup update` if `cargo install` reports an older compiler.
+- **`trackman: command not found`:** add `~/.cargo/bin` to your `PATH`. rustup normally does this; open a new terminal.
+- **Upgrade:** run `cargo install apiman` again. It replaces the installed version when a newer one is published.
+- **Latest unreleased code:** `cargo install --git https://github.com/l3wi/apiman`.
+- **Uninstall:** `cargo uninstall apiman`.
+
+To use it from an AI agent, register the MCP server with your detected clients (Claude Code, Cursor and others):
+
+```sh
+trackman mcp add
+```
 
 ## CLI
 
