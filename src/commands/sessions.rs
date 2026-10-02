@@ -10,8 +10,8 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 
-use trackman::cloud::api::{Activity, ActivityFilter, STROKE_KINDS};
-use trackman::{Error, Result};
+use apiman::cloud::api::{Activity, ActivityFilter, STROKE_KINDS};
+use apiman::{Error, Result};
 
 use super::{api, http, is_human, present, read_only, suggest};
 use crate::ui::{self, Align};

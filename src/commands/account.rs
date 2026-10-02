@@ -6,9 +6,9 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
-use trackman::Result;
-use trackman::cloud::api::Api;
-use trackman::cloud::auth;
+use apiman::Result;
+use apiman::cloud::api::Api;
+use apiman::cloud::auth;
 
 use super::{api, http, is_human, present, read_only, suggest};
 use crate::ui;

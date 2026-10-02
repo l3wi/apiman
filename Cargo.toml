@@ -1,13 +1,16 @@
 [package]
-name = "trackman"
+name = "apiman"
 version = "0.1.0"
 edition = "2024"
 rust-version = "1.88"
 description = "A Trackman compatible CLI & MCP client"
+license = "MIT"
+authors = ["Lewis Freiberg"]
 repository = "https://github.com/l3wi/apiman"
 readme = "README.md"
 keywords = ["trackman", "golf", "launch-monitor", "mcp", "cli"]
-publish = false
+categories = ["command-line-utilities", "api-bindings"]
+exclude = [".gitignore"]
 
 [lib]
 path = "src/lib.rs"

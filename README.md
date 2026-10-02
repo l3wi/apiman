@@ -5,14 +5,14 @@ A Trackman compatible CLI & MCP client.
 - **Live (TM4 on your network):** discover a TrackMan 4, read its status and clock, and record every live event to JSONL. It connects in viewer role and needs no login, so it can run while TPS or the TrackMan app operates the unit.
 - **Historical (TrackMan cloud):** sign in with a device code, list your sessions, and export them to JSON with every stroke and every `Measurement` field.
 
-This repo builds the `trackman` package: a Rust library (`trackman::tm4`, `trackman::cloud`) plus the `trackman` CLI, built on [incurs](https://crates.io/crates/incurs). The same commands are therefore available as an MCP server named `trackman`. The protocol details are in [docs/protocol.md](docs/protocol.md).
+`apiman` is a Rust library (`apiman::tm4`, `apiman::cloud`) plus the `trackman` CLI, built on [incurs](https://crates.io/crates/incurs). The same commands are therefore available as an MCP server named `trackman`. The protocol details are in [docs/protocol.md](docs/protocol.md).
 
 > Unofficial. Not affiliated with or endorsed by TrackMan A/S. "TrackMan" is a trademark of its owner.
 
 ## Install
 
 ```sh
-cargo install --path .        # installs `trackman` into ~/.cargo/bin
+cargo install apiman          # installs the `trackman` command into ~/.cargo/bin
 ```
 
 This requires Rust 1.88 or newer.
@@ -70,14 +70,14 @@ trackman sessions pull --from 2026-09-01 --kind SESSION --out september.json
 
 ```toml
 [dependencies]
-trackman = { git = "https://github.com/l3wi/apiman", default-features = false }
+apiman = { version = "0.1", default-features = false }
 ```
 
 Without the `cli` feature, incurs is not pulled in.
 
 ```rust
 use std::time::Duration;
-use trackman::tm4::{device, live};
+use apiman::tm4::{device, live};
 
 let http = reqwest::Client::new();
 let tm4 = device::resolve(&http, Some("192.168.1.40"), Duration::from_secs(4)).await?;
@@ -103,7 +103,7 @@ let summary = live::run(
 ```
 
 ```rust
-use trackman::cloud::{api::{ActivityFilter, Api, STROKE_KINDS}, auth};
+use apiman::cloud::{api::{ActivityFilter, Api, STROKE_KINDS}, auth};
 
 let http = reqwest::Client::new();
 let api = Api::new(http.clone(), auth::access_token(&http).await?);
@@ -121,3 +121,7 @@ for activity in api.activities(&filter).await? {
 
 - **macOS Local Network permission:** the first multicast `tm4 discover` from a newly built binary can return nothing until macOS grants Local Network access to the terminal. If discovery stays empty, pass `--host`.
 - **TM4 state:** `trackman` never logs in to the TM4, never changes its setup and never sets its clock.
+
+## License
+
+MIT. See [LICENSE](LICENSE).
