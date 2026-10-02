@@ -1,0 +1,13 @@
+# Paged activity list for the signed-in player. Generated from the api.trackmangolf.com schema.
+query Activities($kinds: [ActivityKind!], $timeFrom: DateTime, $timeTo: DateTime, $skip: Int, $take: Int, $includeHidden: Boolean) {
+  me {
+    activities(kinds: $kinds, timeFrom: $timeFrom, timeTo: $timeTo, skip: $skip, take: $take, includeHidden: $includeHidden) {
+      totalCount
+      pageInfo { hasNextPage }
+      items {
+        __typename id kind time isHidden
+        ... on SessionActivity { sessionId strokeCount } ... on VirtualRangeSessionActivity { sessionId strokeCount } ... on PerformancePuttingSessionActivity { sessionId strokeCount } ... on SimulatorSessionActivity { sessionId strokeCount } ... on ShotAnalysisSessionActivity { sessionId strokeCount } ... on TracySessionActivity { sessionId strokeCount } ... on MapMyBagSessionActivity { sessionId strokeCount }
+      }
+    }
+  }
+}

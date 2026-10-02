@@ -1,0 +1,39 @@
+[package]
+name = "trackman"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.88"
+description = "A Trackman compatible CLI & MCP client"
+repository = "https://github.com/l3wi/apiman"
+readme = "README.md"
+keywords = ["trackman", "golf", "launch-monitor", "mcp", "cli"]
+publish = false
+
+[lib]
+path = "src/lib.rs"
+
+[[bin]]
+name = "trackman"
+path = "src/main.rs"
+required-features = ["cli"]
+
+[features]
+default = ["cli"]
+# The `trackman` binary: CLI and MCP server.
+cli = ["dep:incurs"]
+
+[dependencies]
+chrono = { version = "0.4", default-features = false, features = ["clock", "serde", "std"] }
+dirs = "6"
+futures-util = { version = "0.3", default-features = false, features = ["sink", "std"] }
+if-addrs = "0.13"
+incurs = { version = "0.10", features = ["mcp"], optional = true }
+reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls", "http2"] }
+roxmltree = "0.20"
+schemars = { version = "1", features = ["chrono04"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+thiserror = "2"
+tokio = { version = "1", features = ["full"] }
+tokio-tungstenite = "0.26"
+url = "2"

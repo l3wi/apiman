@@ -1,0 +1,37 @@
+# One stroke-bearing activity with every Measurement field. Generated from the api.trackmangolf.com schema.
+query Session($id: ID!) {
+  node(id: $id) {
+    __typename
+    ... on PlayerActivity { id kind time isHidden }
+    ... on SessionActivity { sessionId strokeCount } ... on VirtualRangeSessionActivity { sessionId strokeCount } ... on PerformancePuttingSessionActivity { sessionId strokeCount } ... on SimulatorSessionActivity { sessionId strokeCount } ... on ShotAnalysisSessionActivity { sessionId strokeCount } ... on TracySessionActivity { sessionId strokeCount } ... on MapMyBagSessionActivity { sessionId strokeCount }
+    ... on SessionActivityInterface { strokes { ...Stroke } }
+  }
+}
+
+fragment Stroke on Stroke {
+  time club ball targetDistance
+  tags { value group origin }
+  clubData { name kind loft lie hoselPoint { horizontal vertical } }
+  impactLocation { impactOffset impactHeight dynamicLie }
+  measurement { ...Measurement }
+  normalizedMeasurement { ...Measurement }
+}
+
+fragment Measurement on Measurement {
+  id time kind teePosition targetPosition playerDexterity detectedClubCategory clubSpeed attackAngle
+    clubPath dynamicLoft faceAngle spinLoft faceToPath swingPlane swingDirection swingRadius
+    lowPointDistance lowPointHeight lowPointSide dPlaneTilt impactOffset impactHeight dynamicLie
+    strokeLength backswingTime forwardswingTime tempo ballSpeed ballSpeedDifference smashFactor
+    smashIndex launchAngle launchDirection spinRate spinRateDifference spinIndex spinAxis
+    gyroSpinAngle skidDistance curve maxHeight carry total carrySide totalSide landingAngle
+    landingHeight hangTime lastData rollSpeed rollPercentage speedDrop side entrySpeedDistance break
+    totalBreak rollDeceleration bounces effectiveStimp elevation flatStimp slopePercentageSide
+    slopePercentageRise spinAxisActual curveActual carryActual totalActual carrySideActual
+    totalSideActual landingAngleActual reducedAccuracy
+  ballTrajectory { ...Trajectory }
+  clubTrajectory { ...Trajectory }
+}
+
+fragment Trajectory on Trajectory {
+  kind xFit yFit zFit spinRateFit timeInterval validTimeInterval measuredTimeInterval
+}
