@@ -61,15 +61,16 @@ Every JSONL line is one object with `record` and `host_time` (host UTC, nanoseco
 ```sh
 trackman login                              # device code: approve in the browser that opens
 trackman whoami
-trackman sessions list --from 2026-09-01    # stroke-bearing kinds; --all-kinds for everything
+trackman sessions list --from 2026-09-01    # practice, combine, and course rounds; --all-kinds for everything
 trackman sessions pull <ID> [<ID>…] --out sessions.json
 trackman sessions pull --from 2026-09-01 --kind SESSION --out september.json
 ```
 
 - **Login** uses the OAuth device authorization grant against `login.trackmangolf.com`.
 - **Token cache:** the token is stored at `$TRACKMAN_TOKEN_FILE`, or by default at `<config dir>/trackman/token.json` (mode 0600), and refreshes automatically. `TRACKMAN_TOKEN=<bearer>` overrides the cache.
-- **`sessions pull`** writes `{source, exported_at, units, sessions: [...]}`. Each stroke includes `time`, `club`, `ball`, `tags`, `clubData`, `impactLocation`, `measurement` and `normalizedMeasurement`. Each measurement has all 72 scalar fields plus the ball and club trajectory polynomials.
-- **Default kinds:** without `--kind`, `list` and `pull` use the activity kinds that carry strokes: `SESSION`, `SHOT_ANALYSIS`, `MAP_MY_BAG`, `VIRTUAL_RANGE`, `PERFORMANCE_PUTTING`, `SIMULATOR`, `TRACY`, `TEST` and `COMBINE_TEST`.
+- **`sessions pull`** writes `{source, exported_at, units, sessions: [...]}`. Practice/combine strokes include `time`, `club`, `ball`, `tags`, `clubData`, `impactLocation`, `measurement` and `normalizedMeasurement`. Each measurement has all 72 scalar fields plus the ball and club trajectory polynomials.
+- **Default kinds:** without `--kind`, `list` and `pull` use the activity kinds that carry strokes: `SESSION`, `SHOT_ANALYSIS`, `MAP_MY_BAG`, `VIRTUAL_RANGE`, `PERFORMANCE_PUTTING`, `SIMULATOR`, `TRACY`, `TEST`, `COMBINE_TEST` and `COURSE_PLAY`.
+- **Course rounds:** Rounds retain the activity ID, kind and time, include a nested `scorecard`, and expose flattened `strokes` with `holeNumber` and `isPlayoff`. Both regular and playoff holes are included; automatic putts and penalties may affect scores without creating shot records. Round shots use TrackMan's `ShotMeasurement` fields, which differ from practice `Measurement` (no trajectory polynomials). Missing measurements remain null. GraphQL errors fail the export instead of silently omitting data.
 
 ### Output and MCP
 
@@ -115,12 +116,12 @@ let summary = live::run(
 ```
 
 ```rust
-use apiman::cloud::{api::{ActivityFilter, Api, STROKE_KINDS}, auth};
+use apiman::cloud::{api::{ActivityFilter, Api, SESSION_KINDS}, auth};
 
 let http = reqwest::Client::new();
 let api = Api::new(http.clone(), auth::access_token(&http).await?);
 let filter = ActivityFilter {
-    kinds: Some(STROKE_KINDS.iter().map(|k| k.to_string()).collect()),
+    kinds: Some(SESSION_KINDS.iter().map(|k| k.to_string()).collect()),
     limit: Some(5),
     ..Default::default()
 };

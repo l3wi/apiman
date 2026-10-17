@@ -6,6 +6,7 @@ query Activities($kinds: [ActivityKind!], $timeFrom: DateTime, $timeTo: DateTime
       pageInfo { hasNextPage }
       items {
         __typename id kind time isHidden
+    ... on CoursePlayActivity { course { displayName } scorecard { id } }
         ... on SessionActivity { sessionId strokeCount } ... on VirtualRangeSessionActivity { sessionId strokeCount } ... on PerformancePuttingSessionActivity { sessionId strokeCount } ... on SimulatorSessionActivity { sessionId strokeCount } ... on ShotAnalysisSessionActivity { sessionId strokeCount } ... on TracySessionActivity { sessionId strokeCount } ... on MapMyBagSessionActivity { sessionId strokeCount }
       }
     }

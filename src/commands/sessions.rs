@@ -10,7 +10,7 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 
-use apiman::cloud::api::{Activity, ActivityFilter, STROKE_KINDS};
+use apiman::cloud::api::{Activity, ActivityFilter, SESSION_KINDS};
 use apiman::{Error, Result};
 
 use super::{api, http, is_human, present, read_only, suggest};
@@ -31,7 +31,7 @@ fn parse_time(value: Option<&str>, flag: &str) -> Result<Option<DateTime<Utc>>> 
 }
 
 /// Builds the activity filter shared by `list` and `pull`. With no `--kind`,
-/// only stroke-bearing kinds are used unless `all_kinds` is set.
+/// only exportable session kinds (including course rounds) are used unless `all_kinds` is set.
 fn activity_filter(
     kind: &[String],
     all_kinds: bool,
@@ -45,7 +45,7 @@ fn activity_filter(
     } else if all_kinds {
         None
     } else {
-        Some(STROKE_KINDS.iter().map(|k| (*k).to_owned()).collect())
+        Some(SESSION_KINDS.iter().map(|k| (*k).to_owned()).collect())
     };
     Ok(ActivityFilter {
         kinds,
@@ -65,7 +65,7 @@ fn kind_cell(kind: &str, hidden: bool) -> String {
 
 #[derive(Deserialize, incurs::Options)]
 pub struct ListOptions {
-    /// Activity kind filter, e.g. SESSION or SHOT_ANALYSIS. Repeatable. Defaults to every stroke-bearing kind.
+    /// Activity kind filter, e.g. SESSION or SHOT_ANALYSIS. Repeatable. Defaults to practice, combine, and course rounds.
     #[serde(default)]
     kind: Vec<String>,
     /// List every activity kind, including ones without strokes.
@@ -90,7 +90,11 @@ fn render_list(out: &ListOutput) -> String {
         return "No sessions found.".into();
     }
     let shots: u32 = out.activities.iter().filter_map(|a| a.stroke_count).sum();
-    let noun = if out.activities.len() == 1 { "activity" } else { "activities" };
+    let noun = if out.activities.len() == 1 {
+        "activity"
+    } else {
+        "activities"
+    };
     let rows: Vec<Vec<String>> = out
         .activities
         .iter()
@@ -99,15 +103,25 @@ fn render_list(out: &ListOutput) -> String {
                 ui::local_time(a.time),
                 kind_cell(&a.kind, a.is_hidden == Some(true)),
                 a.stroke_count.map_or_else(|| "–".into(), |n| n.to_string()),
+                a.course
+                    .as_ref()
+                    .and_then(|c| c.display_name.clone())
+                    .unwrap_or_default(),
                 a.id.clone(),
             ]
         })
         .collect();
     format!(
-        "{} {noun}, {shots} shots\n\n{}",
+        "{} {noun}, {shots} known shots\n\n{}",
         out.activities.len(),
         ui::table(
-            &[("Date", Align::Left), ("Kind", Align::Left), ("Shots", Align::Right), ("ID", Align::Left)],
+            &[
+                ("Date", Align::Left),
+                ("Kind", Align::Left),
+                ("Shots", Align::Right),
+                ("Course", Align::Left),
+                ("ID", Align::Left)
+            ],
             &rows
         )
     )
@@ -120,10 +134,18 @@ pub fn list_command() -> CommandDef {
             let human = is_human(&ctx);
             let result = async {
                 let o = &ctx.options;
-                let filter =
-                    activity_filter(&o.kind, o.all_kinds, o.from.as_deref(), o.to.as_deref(), o.limit, o.include_hidden)?;
+                let filter = activity_filter(
+                    &o.kind,
+                    o.all_kinds,
+                    o.from.as_deref(),
+                    o.to.as_deref(),
+                    o.limit,
+                    o.include_hidden,
+                )?;
                 let http = http();
-                Ok(ListOutput { activities: api(&http).await?.activities(&filter).await? })
+                Ok(ListOutput {
+                    activities: api(&http).await?.activities(&filter).await?,
+                })
             }
             .await;
             present(human, result, render_list, |out| {
@@ -132,13 +154,16 @@ pub fn list_command() -> CommandDef {
                 } else {
                     suggest(&[
                         ("sessions pull <ID> --out session.json", "Download one session"),
-                        ("sessions pull --from <YYYY-MM-DD> --out sessions.json", "Download everything since a date"),
+                        (
+                            "sessions pull --from <YYYY-MM-DD> --out sessions.json",
+                            "Download everything since a date",
+                        ),
                     ])
                 })
             })
         },
     )
-    .description("List TrackMan cloud activities (stroke-bearing kinds by default)")
+    .description("List TrackMan cloud sessions, including course rounds")
     .mcp(read_only())
     .done()
 }
@@ -155,7 +180,7 @@ pub struct PullArgs {
 pub struct PullOptions {
     /// Output JSON file. Defaults to sessions-<UTC timestamp>.json.
     out: Option<String>,
-    /// With no IDs: activity kind filter. Repeatable. Defaults to every stroke-bearing kind.
+    /// With no IDs: activity kind filter. Repeatable. Defaults to practice, combine, and course rounds.
     #[serde(default)]
     kind: Vec<String>,
     /// With no IDs: only activities at or after this time (RFC 3339 or YYYY-MM-DD, UTC).
@@ -199,16 +224,25 @@ fn summarise(session: &Value) -> SessionSummary {
     let strokes = session["strokes"].as_array().map(Vec::as_slice).unwrap_or_default();
     let mut clubs: Vec<ClubCount> = Vec::new();
     for stroke in strokes {
-        let club = stroke["club"].as_str().filter(|c| !c.is_empty()).unwrap_or("Unknown club");
+        let club = stroke["club"]
+            .as_str()
+            .filter(|c| !c.is_empty())
+            .unwrap_or("Unknown club");
         match clubs.iter_mut().find(|c| c.club == club) {
             Some(c) => c.shots += 1,
-            None => clubs.push(ClubCount { club: club.to_owned(), shots: 1 }),
+            None => clubs.push(ClubCount {
+                club: club.to_owned(),
+                shots: 1,
+            }),
         }
     }
     SessionSummary {
         id: session["id"].as_str().unwrap_or_default().to_owned(),
         kind: session["kind"].as_str().unwrap_or_default().to_owned(),
-        time: session["time"].as_str().and_then(|t| DateTime::parse_from_rfc3339(t).ok()).map(|t| t.with_timezone(&Utc)),
+        time: session["time"]
+            .as_str()
+            .and_then(|t| DateTime::parse_from_rfc3339(t).ok())
+            .map(|t| t.with_timezone(&Utc)),
         shots: strokes.len(),
         clubs,
     }
@@ -221,8 +255,14 @@ async fn pull(args: PullArgs, options: PullOptions) -> Result<PullOutput> {
         Some(ids) => ids,
         None => {
             let o = &options;
-            let filter =
-                activity_filter(&o.kind, false, o.from.as_deref(), o.to.as_deref(), o.limit, o.include_hidden)?;
+            let filter = activity_filter(
+                &o.kind,
+                false,
+                o.from.as_deref(),
+                o.to.as_deref(),
+                o.limit,
+                o.include_hidden,
+            )?;
             api.activities(&filter).await?.into_iter().map(|a| a.id).collect()
         }
     };
@@ -234,7 +274,10 @@ async fn pull(args: PullArgs, options: PullOptions) -> Result<PullOutput> {
     let mut sessions = Vec::with_capacity(ids.len());
     for (i, id) in ids.iter().enumerate() {
         if progress {
-            eprint!("\r\x1b[2K{}", ui::err_dim(&format!("Downloading session {}/{}…", i + 1, ids.len())));
+            eprint!(
+                "\r\x1b[2K{}",
+                ui::err_dim(&format!("Downloading session {}/{}…", i + 1, ids.len()))
+            );
         }
         sessions.push(api.session(id).await?);
     }
@@ -242,9 +285,10 @@ async fn pull(args: PullArgs, options: PullOptions) -> Result<PullOutput> {
         eprint!("\r\x1b[2K");
     }
 
-    let out = options.out.map(PathBuf::from).unwrap_or_else(|| {
-        PathBuf::from(format!("sessions-{}.json", Utc::now().format("%Y%m%dT%H%M%SZ")))
-    });
+    let out = options
+        .out
+        .map(PathBuf::from)
+        .unwrap_or_else(|| PathBuf::from(format!("sessions-{}.json", Utc::now().format("%Y%m%dT%H%M%SZ"))));
     let summaries: Vec<SessionSummary> = sessions.iter().map(summarise).collect();
     let document = json!({
         "source": "https://api.trackmangolf.com/graphql",
@@ -288,7 +332,12 @@ fn render_pull(out: &PullOutput) -> String {
         ui::bold(&out.out),
         ui::dim(&format!("({})", ui::bytes(out.bytes))),
         ui::table(
-            &[("Date", Align::Left), ("Kind", Align::Left), ("Shots", Align::Right), ("Clubs", Align::Left)],
+            &[
+                ("Date", Align::Left),
+                ("Kind", Align::Left),
+                ("Shots", Align::Right),
+                ("Clubs", Align::Left)
+            ],
             &rows
         )
     )
@@ -311,4 +360,29 @@ pub fn group() -> Cli {
         .description("Historical sessions from TrackMan cloud")
         .command("list", list_command())
         .command("pull", pull_command())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn defaults_include_course_rounds_and_explicit_filters_win() {
+        let default = activity_filter(&[], false, None, None, None, false).unwrap();
+        assert!(default.kinds.unwrap().contains(&"COURSE_PLAY".into()));
+        let all = activity_filter(&[], true, None, None, None, false).unwrap();
+        assert!(all.kinds.is_none());
+        let explicit = activity_filter(&["course_play".into()], false, None, None, None, false).unwrap();
+        assert_eq!(explicit.kinds.unwrap(), vec!["COURSE_PLAY"]);
+    }
+
+    #[test]
+    fn course_summary_counts_shot_records_including_playoffs() {
+        let summary = summarise(&json!({"id":"round", "kind":"COURSE_PLAY", "strokes":[
+            {"club":"Driver", "holeNumber":1}, {"club":"Putter", "holeNumber":1, "isPlayoff":true}
+        ]}));
+        assert_eq!(summary.shots, 2);
+        assert_eq!(summary.clubs.len(), 2);
+        assert_eq!(summary.kind, "COURSE_PLAY");
+    }
 }

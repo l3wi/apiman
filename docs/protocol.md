@@ -185,3 +185,17 @@ Range-bay activities, such as `RANGE_PRACTICE`, carry `RangeStroke`, which is a 
 ### 2.5 History
 
 The TM4 LAN API has no session or history query. Synced sessions in the cloud are the only after-the-fact source.
+
+### 2.6 Course rounds
+
+`COURSE_PLAY` is a `CoursePlayActivity`, separate from `SimulatorSessionActivity`.
+It does not implement `SessionActivityInterface`. Its `scorecard.id` resolves through
+`node(id)` to a `Scorecard` with `holes` and `playOffHoles`, each containing `shots`.
+These use `ShotMeasurement`, requested separately with `MEASUREMENT` and
+`NORMALIZED_MEASUREMENT`. This type has no trajectory fields.
+
+`SESSION_KINDS` includes course rounds for the CLI defaults. `STROKE_KINDS` keeps
+its existing interface-specific meaning. `Api::round(scorecard_id)` returns the
+scorecard; `Api::session(activity_id)` resolves the scorecard and retains it while
+adding top-level `strokes` (with hole number and playoff flag) and `strokeCount`.
+Counts describe returned shot records, not gross scores or automatic putts.

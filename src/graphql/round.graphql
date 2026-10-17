@@ -1,0 +1,40 @@
+# Course-play shots use ShotMeasurement, not the practice-session Measurement type.
+query Round($id: ID!) {
+  node(id: $id) {
+    __typename
+    ... on Scorecard {
+      id kind startedAt finishedAt lastUpdatedAt state isCompleted
+      numberOfHolesToPlay numberOfHolesPlayed thruHole par
+      grossScore netScore stablefordPoints toPar netToPar mulligans teeName
+      course { id displayName courseIdentifier }
+      holes { ...RoundHole }
+      playOffHoles { ...RoundHole }
+    }
+  }
+}
+
+fragment RoundHole on ScorecardHole {
+  id holeNumber isPlayed distance par strokeIndex teeName finishedAt
+  grossScore netScore putts gimmeWasGiven mulligans
+  shots {
+    id shotNumber club time: launchTime launchTime finalTime launchLie finalLie
+    total shotResult shotsToAdd
+    launchPosition { x y z }
+    aimPoint { x y z }
+    finalPosition { x y z }
+    dropPosition { x y z }
+    measurement: measurement(shotMeasurementKind: MEASUREMENT) { ...RoundMeasurement }
+    normalizedMeasurement: measurement(shotMeasurementKind: NORMALIZED_MEASUREMENT) { ...RoundMeasurement }
+  }
+}
+
+fragment RoundMeasurement on ShotMeasurement {
+  ballSpeed carrySideActual carryActual launchDirection maxHeight carry total carrySide
+  launchAngle lastData spinRate spinAxis backswingTime forwardswingTime tempo strokeLength
+  dynamicLie impactOffset impactHeight skidDistance rollPercentage rollSpeed speedDrop rollDeceleration
+  effectiveStimp flatStimp break bounces entrySpeedDistance elevation slopePercentageSide slopePercentageRise
+  totalBreak attackAngle clubPath clubSpeed dynamicLoft faceAngle faceToPath smashFactor
+  gyroSpinAngle spinLoft swingDirection swingPlane swingRadius dPlaneTilt lowPointDistance lowPointHeight
+  lowPointSide landingHeight totalSide side landingAngle hangTime curve totalActual
+  totalSideActual curveActual landingAngleActual spinAxisActual targetDistance distanceFromPin distanceFromPinTotal
+}

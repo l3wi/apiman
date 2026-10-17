@@ -2,6 +2,7 @@
 query Session($id: ID!) {
   node(id: $id) {
     __typename
+    ... on CoursePlayActivity { course { displayName } scorecard { id } }
     ... on PlayerActivity { id kind time isHidden }
     ... on SessionActivity { sessionId strokeCount } ... on VirtualRangeSessionActivity { sessionId strokeCount } ... on PerformancePuttingSessionActivity { sessionId strokeCount } ... on SimulatorSessionActivity { sessionId strokeCount } ... on ShotAnalysisSessionActivity { sessionId strokeCount } ... on TracySessionActivity { sessionId strokeCount } ... on MapMyBagSessionActivity { sessionId strokeCount }
     ... on SessionActivityInterface { strokes { ...Stroke } }
